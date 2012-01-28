@@ -2,36 +2,91 @@ function JsPanel()
 {
 	this.pressX = 0;
 	this.pressY = 0;
-	this.pressed = false;
+	this.state = {pressed:false,resizing:false,moving:false,dx:0,dy:0};
+	this.listening = false;
 	this.element = null;
 	this.maindiv = null;
 	this.imgdir = 'greenback';
 }
 
-JsPanel.prototype.resizePanel = function(w,h) {
-  var ht = h || this.element.clientHeight;
-  var wd = w || this.element.clientWidth;
-  var height = parseInt(ht);
-  var width = parseInt(wd);
-  if ( height > 63 && width > 71 ) {
-	  this.element.style.height = height + 'px';
-	  this.element.style.width = width + 'px';
-	  var divs = this.element.getElementsByTagName('div');
-	  for(var i=0; i<divs.length; i++) {
-		  switch (divs[i].className) {
-			  case 'JsPanel_leftmid':
-			  case 'JsPanel_rightmid':
-				  divs[i].style.height = height - 32 + 'px';
-				  break;
-			  case 'JsPanel_mid':
-				  divs[i].style.width = width - 36 + 'px';
-				  break;
-			  case 'JsPanel_midmain':
-				  divs[i].style.height = height - 10 + 'px';
-				  break;
-		  }
-	  }
-  }
+JsPanel.prototype.resize = function(w,h) {
+	var ht = h || this.element.clientHeight;
+	var wd = w || this.element.clientWidth;
+	var height = parseInt(ht);
+	var width = parseInt(wd);
+	ret = false;
+	if ( height > 63 && width > 71 ) {
+		ret = true;
+		this.element.style.height = height + 'px';
+		this.element.style.width = width + 'px';
+		var divs = this.element.getElementsByTagName('div');
+		for(var i=0; i<divs.length; i++) {
+			switch (divs[i].className) {
+				case 'JsPanel_leftmid':
+				case 'JsPanel_rightmid':
+					divs[i].style.height = height - 32 + 'px';
+					break;
+				case 'JsPanel_mid':
+					divs[i].style.width = width - 36 + 'px';
+					break;
+				case 'JsPanel_midmain':
+					divs[i].style.height = height - 10 + 'px';
+					break;
+			}
+		}
+	}
+	return ret;
+}
+
+JsPanel.prototype.moveBy = function (dx,dy)
+{
+	console.log("moveBy(" + dx + "," + dy + ")");
+	var curx = (this.element.style.left.length == 0 )?this.element.offsetLeft:this.element.style.left;
+	var cury = (this.element.style.top.length == 0 )?this.element.offsetTop:this.element.style.top;
+	var x = parseInt(curx) + parseInt(dx);
+	var y = parseInt(cury) + parseInt(dy);
+	var ret = {x:0,y:0,moved:false};
+	if (x > 0 && ((x + this.element.clientWidth) < window.innerWidth)) {
+		this.element.style.left = x + 'px';
+		ret.x = 1;
+		ret.moved = true;
+	}
+	if (y > 0 && ((y + this.element.clientHeight) < window.innerHeight)) {
+		this.element.style.top = y + 'px';
+		ret.y = 1;
+		ret.moved = true;
+	}
+	return ret;
+}
+
+JsPanel.prototype.mousePressed = function(evnt, source)
+{
+	var el = evnt.currentTarget || evnt.srcElement;
+	if (el == this.element && source == "panel") {
+		this.pressX = evnt.screenX;
+		this.pressY = evnt.screenY;
+		this.state.pressed = !this.state.pressed;
+	} else if (source == "body") {
+		this.state.pressed = false;
+	}
+	console.log(el.tagName + ":" + el.className + "." + evnt.type + "-" + this.state.pressed + " (" + this.state.dx + "," + this.state.dy + ")" + this.state.resizing);
+	evnt.cancelBubble = true;
+	if (evnt.stopPropagation) evnt.stopPropagation(); 
+}
+
+JsPanel.prototype.mouseReleased = function(evnt)
+{
+	var el = evnt.currentTarget || evnt.srcElement;
+
+	if (!this.state.resizing) {
+		if (this.state.moving) {
+			el.style.cursor = 'auto';
+			this.state.moving = false;
+		} else {
+			el.style.cursor = 'move';
+			this.state.moving = true;
+		}
+	} 
 }
 
 JsPanel.prototype.mouseMoved = function(evnt)
@@ -39,26 +94,77 @@ JsPanel.prototype.mouseMoved = function(evnt)
 	if (!evnt) { evnt = window.event; }
 	var el = evnt.currentTarget || evnt.srcElement;
 	var x = evnt.layerX || evnt.offsetX;
+	var sx = evnt.screenX;
 	var y = evnt.layerY || evnt.offsetY;
-	if (x < 10 && y < 10) {
-		el.style.cursor = 'nw-resize';
-	} else if ( x < 10 && y > (el.clientHeight - 12)) {
-		el.style.cursor = 'sw-resize';
-    	} else if (x > (el.clientWidth - 10) && y < 10) {
-		el.style.cursor = 'ne-resize';
-    	} else if (x > (el.clientWidth - 10) && y > (el.clientHeight - 12)) {
-		el.style.cursor = 'se-resize';
-	} else if (x < 6) {
-		el.style.cursor = 'w-resize';
-	} else if (y < 6) {
-		el.style.cursor = 'n-resize';
-	} else if (x > (el.clientWidth - 6)) {
-		el.style.cursor = 'e-resize';
-	} else if (y > (el.clientHeight - 8)) {
-		el.style.cursor = 's-resize';
+	var sy = evnt.screenY;
+	var dx = (sx - this.pressX);
+	var dy = (sy - this.pressY);
+//	console.log(el.tagName + ":" + el.className + " " + this.state.pressed);
+//     console.log("(" + x + "," + y + ") (" + evnt.clientX + "," + evnt.clientY + ") : " + dx + "," + dy);
+//	console.log(evnt);
+	if (this.state.pressed) {
+			console.log(this.state.resizing + " (" + dx + "," + dy + ")");
+		if (this.state.resizing) {
+			var moved = {x:1,y:1,moved:true};
+			if ((this.state.resizing.match(/^n/) && dy != 0) || (this.state.resizing.match(/^w/) && dx != 0)) {
+				moved = this.moveBy((this.state.dx == 0)?0:dx,(this.state.dy == 0)?0:dy);
+			}
+			if ( moved.moved && !this.resize(this.element.clientWidth + (dx * this.state.dx * moved.x), this.element.clientHeight + (dy * this.state.dy * moved.y))) this.moveBy((this.state.dx == 0)?0:0-dx,(this.state.dy == 0)?0:0-dy);;
+		} else if (this.state.moving) {
+			this.moveBy(dx,dy);
+		}
 	} else {
-		el.style.cursor = 'auto';
+		if (el == this.element) {
+			if (x < 10 && y < 10) {
+				this.state.dx = -1;
+				this.state.dy = -1;
+				this.state.resizing = 'nw';
+				el.style.cursor = 'nw-resize';
+			} else if ( x < 10 && y > (el.clientHeight - 12)) {
+				this.state.dx = -1;
+				this.state.dy = 1;      
+				this.state.resizing = 'sw';
+				el.style.cursor = 'sw-resize';
+			} else if (x > (el.clientWidth - 10) && y < 10) {
+				this.state.dx = 1;
+				this.state.dy = -1;     
+				this.state.resizing = 'ne';
+				el.style.cursor = 'ne-resize';
+			} else if (x > (el.clientWidth - 10) && y > (el.clientHeight - 12)) {
+				this.state.dx = 1;
+				this.state.dy = 1;    
+				this.state.resizing = 'se';
+				el.style.cursor = 'se-resize';
+			} else if (x < 6) {
+				this.state.dx = -1;
+				this.state.dy = 0;   
+				this.state.resizing = 'w';
+				el.style.cursor = 'w-resize';
+			} else if (y < 6) {
+				this.state.dx = 0;
+				this.state.dy = -1;  
+				this.state.resizing = 'n';
+				el.style.cursor = 'n-resize';
+			} else if (x > (el.clientWidth - 6)) {
+				this.state.dx = 1;
+				this.state.dy = 0; 
+				this.state.resizing = 'e';
+				el.style.cursor = 'e-resize';
+			} else if (y > (el.clientHeight - 8)) {
+				this.state.dx = 0;
+				this.state.dy = 1; 
+				this.state.resizing = 's';
+				el.style.cursor = 's-resize';
+			} else {
+				this.state.resizing = false;
+				el.style.cursor = 'auto';
+			}
+		}
 	}
+	this.pressX = sx;
+	this.pressY = sy;
+	evnt.cancelBubble = true;
+	if (evnt.stopPropagation) evnt.stopPropagation();
 }
 
 JsPanel.prototype._addElement = function (parentel, tag, id, cssclass, attrs)
@@ -66,7 +172,7 @@ JsPanel.prototype._addElement = function (parentel, tag, id, cssclass, attrs)
 	var newel = document.createElement(tag);
 	newel.id = id;
 	if (cssclass != null) newel.className = cssclass;
-	if (typeof attrs == "object") {
+	if (typeof attrs == "object") {    
 		for (var key in attrs) {
 			newel[key] = attrs[key];
 		}
@@ -90,7 +196,14 @@ JsPanel.prototype.buildPanel = function(x,y,ht,wd)
 		this.element = null;
 	}
 	var thisinst = this;
-	var el = this._addElement(null, 'div', 'JsPanel', 'JsPanel_hidden',{onmousemove:thisinst.mouseMoved});
+	var el = this._addElement(null, 'div', 'JsPanel', 'JsPanel_hidden', {
+	    onmousemove:function (event) {thisinst.mouseMoved(event)},
+	    onmouseup:function (event) {thisinst.mouseReleased(event)},
+	    onmousedown:function (event) {thisinst.mousePressed(event,"panel")},
+	    onmouseout:function (event) {thisinst.mouseMoved(event)},
+	    onmouseover:function (event) {thisinst.mouseMoved(event)},
+	    onclick:function (event) {return}
+	});
 	var left = this._addElement(el,'div','JsPanel_left', 'JsPanel_left');
 	this._addElement(left,'div','JsPanel_ul', 'JsPanel_ul');
 	this._addElement(left,'div','JsPanel_leftmid', 'JsPanel_leftmid');
@@ -106,12 +219,21 @@ JsPanel.prototype.buildPanel = function(x,y,ht,wd)
 	this._addElement(right,'div','JsPanel_lr', 'JsPanel_lr');
 	this.element = el;
 	this._addElement(document.head, 'link', 'JsPanel_Link',null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	this.element.className = 'JsPanel_container';
+	document.body.addEventListener('mousemove',function (event) {thisinst.mouseMoved(event)},false);
+	document.body.addEventListener('mouseover',function (event) {thisinst.mouseMoved(event)},false);
+	document.body.addEventListener('mouseout',function (event) {thisinst.mouseMoved(event)},false);
+	document.body.addEventListener('mousedown',function (event) {thisinst.mousePressed(event,"body")},false);
 	document.body.appendChild(el);
 }
 
-JsPanel.prototype.showPanel = function ()
+JsPanel.prototype.show = function ()
 {
 	if (!this.element || !this.element.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "showPanel(): Build Panel first";
-	this.element.className = 'JsPanel_container';
+}
+
+JsPanel.prototype.makeEvent = function (obj,funcname)
+{
+	return obj[funcname](e,this);
 }
 
