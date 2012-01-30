@@ -1,21 +1,42 @@
+div#JsPanel {
+	position: absolute;
+	overflow: hidden;
+}
+
 div.JsPanel_container {
-  position: absolute;
-  left: 20px;
-  top: 20px;
-  width: 251px;
-  height: 401px;
   margin: 0;
   padding: 0;
 }
 
-div.JsPanel_hiddent {
-  visible: none;
+div.JsPanel_pressed {
+	border: 2px solid red;
+	margin-left: -2px;
+	margin-top: -2px;
 }
 
-div.JsPanel_container div {
+div.JsPanel_hidden, div.JsPanel_hidden * {
+	display: none;
+}
+
+div.JsPanel_minimized {
+	width: 251px;
+	height: 38px;
+}
+
+div.JsPanel_minimized div {
   margin: 0;
   padding: 0;
 }
+
+div.JsPanel_minimized div.JsPanel_leftmid,
+div.JsPanel_minimized div.JsPanel_rightmid {
+}
+
+div.JsPanel_minimized div.JsPanel_ll,
+div.JsPanel_minimized div.JsPanel_lr {
+	display: none;
+}
+
 
 div.JsPanel_content {
   position: absolute;
@@ -31,7 +52,59 @@ div.JsPanel_content {
   overflow: hidden;
 
 }
+ 
+div.JsPanel_content >  div {
+  width: 100%;
+  border-bottom: 1px solid white;
+}
 
+div.JsPanel_panelhead {
+  text-align: center;
+}
+
+div.JsPanel_panelhead > span {
+}
+
+div.JsPanel_panelhead > button {
+	float: left;
+	height: 20px;
+	width: 22px;
+}
+
+button.JsPanel_minbtn {
+	cursor: pointer;
+}
+
+div.JsPanel_minimized button.JsPanel_minbtn {
+	display: none;
+	cursor: pointer;
+}
+
+button.JsPanel_minbtn_down {
+	cursor: pointer;
+}
+
+button.JsPanel_maxbtn {
+	cursor: pointer;
+}
+ 
+div.JsPanel_container button.JsPanel_maxbtn {
+	display: none;
+	cursor: pointer;
+}
+ 
+button.JsPanel_maxbtn_down {
+	cursor: pointer;
+}
+ 
+button.JsPanel_closebtn {
+	cursor: pointer;
+}
+
+button.JsPanel_closebtn_down {
+	cursor: pointer;
+}
+ 
 div.JsPanel_left, div.JsPanel_right {
   width: 18px;
   float: left;
@@ -65,51 +138,15 @@ div.JsPanel_midmain {
   width: 100% ;
   height: 390px;
 }
-div.JsPanel_ul {
-  background: url('greenback/ul.png') top left no-repeat;
-}
-
-div.JsPanel_ur {
-  background: url('greenback/ur.png') top right no-repeat;
-}
-
-div.JsPanel_ll {
-  background: url('greenback/ll.png') bottom left no-repeat;
-}
-
-div.JsPanel_lr {
-  background: url('greenback/lr.png') bottom right no-repeat;
-}
-
-div.JsPanel_leftmid {
-  background: url('greenback/left.png') top left repeat-y;
-}
-
-div.JsPanel_rightmid {
-  background: url('greenback/right.png') top right repeat-y;
-}
-
-div.JsPanel_midupper {
-  background: url('greenback/top.png') top left repeat-x;
-}
-
-div.JsPanel_midlower {
-  background: url('greenback/bottom.png') bottom left repeat-x;
-}
 
 div.JsPanel_midmain img.JsPanel_midback {
   width: 100%;
   height: 100%;
   left: 0;
   right: 0;
-  z-index: -1; 
+ z-index: -1;
 }
 
-div.JsPanel_panelhead, div.JsPanel_inputs, div.JsPanel_outputs {
-  width: 100%;
-  border-bottom: 1px solid white;
-}
 
-div.JsPanel_panelhead {
-  text-align: center;
-}
+
+
