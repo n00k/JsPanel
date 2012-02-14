@@ -6,9 +6,11 @@ function JsPanel()
 	this.listening = false;
 	this.element = null;
 	this.maindiv = null;
+	this.userdiv = null;
 	this.panelhead = null;
-	this.title = {element:null,text:" "};
+	this.title = {element:null,text:' '};
 	this.themedir = 'greenback';
+	this.debugout = document.getElementById('debugout');
 }
 
 JsPanel.prototype.resize = function(h,w) {
@@ -44,6 +46,7 @@ JsPanel.prototype.resize = function(h,w) {
 
 JsPanel.prototype._addEventListener = function(element, eventtype, func, capture)
 {
+	capture = false;
 	if (element.addEventListener) {
 		return element.addEventListener(eventtype, func, capture);
 	} else {
@@ -60,6 +63,7 @@ JsPanel.prototype.minimize = function()
 	this.state.minimized = true;
 	this.state.width = this.element.clientWidth;
     	this.state.height = this.element.clientHeight;
+	this.state.resizing = false;
 	this.element.style.height = height + 'px';
 	this.element.style.width = width + 'px';
 	this.element.className = 'JsPanel_minimized';
@@ -112,6 +116,10 @@ JsPanel.prototype.mousePressed = function(evnt, source)
 	}
 	evnt.cancelBubble = true;
 	if (evnt.stopPropagation) evnt.stopPropagation(); 
+	if (this.debugout) {
+		var msg = evnt.type + "(" + source + ") - target:" + el.tagName + "#" + el.id + "." + el.className;
+		this.debugout.innerHTML = msg;
+	}
 }
 
 JsPanel.prototype.mouseReleased = function(evnt)
@@ -124,8 +132,10 @@ JsPanel.prototype.mouseReleased = function(evnt)
 			el.style.cursor = 'auto';
 			this.state.moving = false;
 		} else {
-			el.style.cursor = 'move';
-			this.state.moving = true;
+			if (this.state.pressed) {
+				el.style.cursor = 'move';
+				this.state.moving = true;
+			}
 		}
 	} 
 }
@@ -140,12 +150,14 @@ JsPanel.prototype.mouseMoved = function(evnt,source)
 	var y = sy - parseInt(this.state.y);
 	var dx = (sx - this.pressX);
 	var dy = (sy - this.pressY);
-	var msg = "";
-	for (key in this.state) {
-		msg += key + ": " + this.state[key] + ", ";
+	if (this.debugout) {
+		var msg = "";
+		for (key in this.state) {
+			msg += key + ": " + this.state[key] + ", ";
+		}
+		msg += "<br>" + evnt.type + "(" + source + ") - target:" + el.tagName + "#" + el.id + "." + el.className;
+		this.debugout.innerHTML = msg;
 	}
-	msg += "<br>" + evnt.type + "(" + source + ") - target:" + el.tagName + "#" + el.id + "." + el.className;
-	document.getElementById('debugout').innerHTML = msg;
 	if (this.state.pressed) {
 		if (this.state.resizing) {
 			var moved = {x:1,y:1,moved:true};
@@ -157,7 +169,7 @@ JsPanel.prototype.mouseMoved = function(evnt,source)
 			this.moveBy(dx,dy);
 		}
 	} else {
-		if (source == "panel" && !this.state.minimized) {
+		if (source == "panel" && !this.state.minimized && !el.className.match(/JsPanel_noresize/)) {
 			if (x < 10 && y < 10) {
 				this.state.dx = -1;
 				this.state.dy = -1;
@@ -222,14 +234,19 @@ JsPanel.prototype._addElement = function (parentel, tag, id, cssclass, attrs)
 			newel.setAttribute(key,attrs[key]);
 		}
 	}
-	if (parentel && parentel.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) parentel.appendChild(newel);
+	if (parentel && parentel.appendChild) parentel.appendChild(newel);
 	return newel;
 }
 
 JsPanel.prototype.addElement = function (tag, id, cssclass, attrs)
 {
-	if (!this.maindiv || !this.maindiv.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "addElement(): Build Panel first";
-	return this._addElement(this.maindiv, tag, id, cssclass, attrs);
+	if (!this.userdiv || !this.userdiv.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "addElement(): Build Panel first";
+	return this._addElement(this.userdiv, tag, id, cssclass, attrs);
+}
+
+JsPanel.prototype.appendChild = function (newchild)
+{
+	return this.userdiv.appendChild(newchild);
 }
 
 JsPanel.prototype.cancelEvent = function (evnt)
@@ -251,30 +268,36 @@ JsPanel.prototype.buttonSwitch = function (evnt, up, cancel)
 
 JsPanel.prototype.panelHeadButton = function (element,type,actionfunc)
 {
-	var newel = this._addElement(element,'button','JsPanel_' + type + 'btn','JsPanel_' + type + 'btn',{type:'button'});
+	var newel = this._addElement(element,'button','JsPanel_' + type + 'btn','JsPanel_noresize JsPanel_' + type + 'btn',{type:'button'});
 	var thisinst = this;
 	this._addEventListener(newel,'mousedown',function (event) {thisinst.buttonSwitch(event,false,true)});
 	this._addEventListener(newel,'mouseup',function (event) {thisinst.buttonSwitch(event,true,true)});
 	this._addEventListener(newel,'mouseout',function (event) {thisinst.buttonSwitch(event,true,true)});
 	this._addEventListener(newel,'click',function (event) {thisinst[actionfunc]();thisinst.cancelEvent(event)});
-	this._addEventListener(newel,'mousemove',function (event) {thisinst.mouseMoved(event,"button")}, true);
 }
 
 JsPanel.prototype.wipe = function()
 {
+	var thisinst = this;
 	this.maindiv.innerHTML = "";           
-	this.panelhead = this.addElement('div','JsPanel_panelhead','JsPanel_panelhead');
+	this.panelhead = this._addElement(this.maindiv,'div','JsPanel_panelhead','JsPanel_panelhead');
 	this.panelHeadButton(this.panelhead,'close','hide');
 	this.panelHeadButton(this.panelhead,'min','minimize');
 	this.panelHeadButton(this.panelhead,'max','maximize');
+	this.title.element = this._addElement(this.panelhead,'span','JsPanel_title_span','JsPanel_title_span');
+	this.setTitle(this.title.text);
 
-	var tspan = this._addElement(this.panelhead,'span','JsPanel_title_span','JsPanel_title_span');
-	this.title.element = this._addElement(tspan,'textNode','JsPanel_title_text',null,{textContent:this.title.text});
+ 	this.userdiv = this._addElement(this.maindiv,'div','JsPanel_usercontent','JsPanel_usercontent');
+	this._addEventListener(this.userdiv,'mousedown',thisinst.cancelEvent,false); 
+	this._addEventListener(this.userdiv,'mouseup',thisinst.cancelEvent,false); 
 }
 
 JsPanel.prototype.setTheme = function(themedir)
 {
 	var link = document.getElementById('JsPanel_Theme_Link');
+	var hidden = this.element.className.match(/hidden/);
+	var minimized = this.state.minimized;
+	this.hide();
  	if (link) {
 		document.getElementsByTagName('head')[0].removeChild(link);
 	}
@@ -282,6 +305,32 @@ JsPanel.prototype.setTheme = function(themedir)
 	this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Theme_Link',null,{type:'text/css',href:this.themedir + '/JsPanel_theme.css',rel:'stylesheet'}); 
 	var bkgd = document.getElementById("JsPanel_midback");
 	if (bkgd) bkgd.src = this.themedir + '/mid.png';
+	if (!hidden) {
+		this.show();
+		if (minimized) this.minimize();
+	}
+
+}
+
+JsPanel.prototype.parseCoord = function(x)
+{
+	var ret;
+	var mat = x.match(/([0-9]+)[ ]?(px|%)?$/);
+	if (mat) {
+		switch (mat[2]) {
+			case 'px':
+			case '':
+			case null:
+				ret = mat[1] + 'px';
+				break;
+			case '%':
+				ret = mat[1] + '%';
+				break;
+		}
+	} else {
+		ret = x;
+	}
+	return ret;
 }
 
 JsPanel.prototype.buildPanel = function(x,y,ht,wd)
@@ -318,35 +367,40 @@ JsPanel.prototype.buildPanel = function(x,y,ht,wd)
 	this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Link',null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
 	this.setTheme(this.themedir);
 	this.wipe();
-	if (x) this.state.x = parseInt(x) + 'px';
-	if (y) this.state.x = parseInt(y) + 'px';
-	if (ht) this.state.x = parseInt(ht) + 'px';
-	if (wd) this.state.x = parseInt(wd) + 'px';
+	if (x) this.state.x = this.parseCoord(x);
+	if (y) this.state.y = this.parseCoord(y);
+	if (ht) this.state.ht = this.parseCoord(ht);
+	if (wd) this.state.wd = this.parseCoord(wd);
 	this.element.style.left = this.state.x;
 	this.element.style.top = this.state.y;
 	this.element.style.height = this.state.ht;
 	this.element.style.width = this.state.wd;
-	this._addEventListener(document.getElementsByTagName('body')[0],'mousemove',function(event) {thisinst.mouseMoved(event)},false);
-	this._addEventListener(document.getElementsByTagName('body')[0],'mouseover',function(event) {thisinst.mouseMoved(event)},false);
-	this._addEventListener(document.getElementsByTagName('body')[0],'mouseout',function(event) {thisinst.mouseMoved(event)},false);
-	this._addEventListener(document.getElementsByTagName('body')[0],'mousedown',function(event) {thisinst.mousePressed(event,"body")},false);
+	this._addEventListener(window,'mousemove',function(event) {thisinst.mouseMoved(event)},false);
+	this._addEventListener(window,'mouseover',function(event) {thisinst.mouseMoved(event)},false);
+	this._addEventListener(window,'mouseout',function(event) {thisinst.mouseMoved(event)},false);
+	this._addEventListener(window,'mousedown',function(event) {thisinst.mousePressed(event,"body")},false);
+// 	this._addEventListener(document.getElementsByTagName('body')[0],'mousemove',function(event) {thisinst.mouseMoved(event)},false);
+//	this._addEventListener(document.getElementsByTagName('body')[0],'mouseover',function(event) {thisinst.mouseMoved(event)},false);
+//	this._addEventListener(document.getElementsByTagName('body')[0],'mouseout',function(event) {thisinst.mouseMoved(event)},false);
+//	this._addEventListener(document.getElementsByTagName('body')[0],'mousedown',function(event) {thisinst.mousePressed(event,"body")},false); 
 	document.getElementsByTagName('body')[0].appendChild(el);
 }
 
 JsPanel.prototype.setTitle = function (str)
 {
-	this.title.text = (str)?str:" ";
-	if (this.title.element) this.title.element.innerHTML = this.title.text;
+	this.title.text = str;
+	if (this.title.element) this.title.element.innerHTML = this.title.text + '&nbsp;';
 }
 
 JsPanel.prototype.show = function ()
 {
-	if (!this.element || !this.element.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "showPanel(): Build Panel first";
+	if (!this.element || !this.element.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "show(): Build Panel first";
 	this.element.className = 'JsPanel_container';
  	this.element.style.left = this.state.x;
 	this.element.style.top = this.state.y;
 	this.element.style.height = this.state.ht;
 	this.element.style.width = this.state.wd; 
+	if (this.state.minimized) this.maximize();
 }
 
 JsPanel.prototype.hide = function ()

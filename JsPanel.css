@@ -50,12 +50,15 @@ div.JsPanel_content {
   padding-top:5px !important;
   padding-bottom:5px !important;
   overflow: hidden;
-
 }
  
 div.JsPanel_content >  div {
   width: 100%;
   border-bottom: 1px solid white;
+}
+
+div.JsPanel_usercontent {
+  overflow: hidden;
 }
 
 div.JsPanel_panelhead {
