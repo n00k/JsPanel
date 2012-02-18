@@ -1,5 +1,8 @@
-function JsPanel() 
+if (typeof window.JsPanel_list == 'undefined') window.JsPanel_list=Array();
+function JsPanel(unique_seed) 
 {
+	this.unique_seed = unique_seed;
+	this.unique = undefined;
 	this.pressX = 0;
 	this.pressY = 0;
 	this.state = {pressed:false,resizing:false,moving:false,minimized:false,dx:0,dy:0,x:'20px',y:'20px',ht:'401px',wd:'251px'};
@@ -11,6 +14,26 @@ function JsPanel()
 	this.title = {element:null,text:' '};
 	this.themedir = 'greenback';
 	this.debugout = document.getElementById('debugout');
+	this.style = undefined;
+	this.themelink = undefined;
+}
+
+JsPanel.prototype.getUnique = function()
+{
+	var ret;
+	var id = undefined;
+	if (this.unique === undefined) {
+		if (typeof this.unique_seed == 'undefined') this.unique_seed = '';
+		var idlist = window.JsPanel.toString();
+		while ((id === undefined) || (idlist.match(id)))
+		{
+			var dt = new Date();
+			id= this.unique_seed +'Js_Panel_' + dt.getTime();
+		}
+		this.unique = id;
+		window.JsPanel_list.push(id);
+	}
+	return this.unique;
 }
 
 JsPanel.prototype.resize = function(h,w) {
@@ -28,15 +51,18 @@ JsPanel.prototype.resize = function(h,w) {
 		var divs = this.element.getElementsByTagName('div');
 		for(var i=0; i<divs.length; i++) {
 			switch (divs[i].className) {
-				case 'JsPanel_leftmid':
-				case 'JsPanel_rightmid':
+				case this.getUnique() + '_leftmid':
+				case this.getUnique() + '_rightmid':
 					divs[i].style.height = height - 32 + 'px';
 					break;
-				case 'JsPanel_mid':
+				case this.getUnique() + '_mid':
 					divs[i].style.width = width - 36 + 'px';
 					break;
-				case 'JsPanel_midmain':
+				case this.getUnique() + '_midmain':
 					divs[i].style.height = height - 10 + 'px';
+					break;
+				case this.getUnique() + '_usercontent':
+					divs[i].style.height = height - 30 + 'px';
 					break;
 			}
 		}
@@ -66,14 +92,14 @@ JsPanel.prototype.minimize = function()
 	this.state.resizing = false;
 	this.element.style.height = height + 'px';
 	this.element.style.width = width + 'px';
-	this.element.className = 'JsPanel_minimized';
+	this.element.className = this.getUnique() + '_minimized';
 }
 
 JsPanel.prototype.maximize = function()
 {
 	this.state.minimized = false;
 	this.resize(this.state.ht,this.state.wd);
-	this.element.className = 'JsPanel_container';
+	this.element.className = this.getUnique() + '_container';
 }
 
 JsPanel.prototype.moveBy = function (dx,dy)
@@ -83,18 +109,14 @@ JsPanel.prototype.moveBy = function (dx,dy)
 	var x = parseInt(curx) + parseInt(dx);
 	var y = parseInt(cury) + parseInt(dy);
 	var ret = {x:0,y:0,moved:false};
-//	if (x > 0 && ((x + this.element.clientWidth) < window.innerWidth)) {
-		this.state.x = x + 'px';
-		this.element.style.left = this.state.x;
-		ret.x = 1;
-		ret.moved = true;
-//	}
-//	if (y > 0 && ((y + this.element.clientHeight) < window.innerHeight)) {
-		this.state.y = y + 'px';
-		this.element.style.top = this.state.y;
-		ret.y = 1;
-		ret.moved = true;
-//	}
+	this.state.x = x + 'px';
+	this.element.style.left = this.state.x;
+	ret.x = 1;
+	ret.moved = true;
+	this.state.y = y + 'px';
+	this.element.style.top = this.state.y;
+	ret.y = 1;
+	ret.moved = true;
 	return ret;
 }
 
@@ -102,23 +124,24 @@ JsPanel.prototype.mousePressed = function(evnt, source)
 {
 	if (!evnt) { evnt = window.event; }
 	var el = evnt.currentTarget || evnt.srcElement;
+	var pressed = new RegExp("[ ]*" + this.getUnique() + "_pressed[ ]*","g");
 	if (source == "panel") {
 		this.pressX = evnt.clientX;
 		this.pressY = evnt.clientY;
 		this.state.pressed = !this.state.pressed;
 	} else if (source == "body") {
 		this.state.pressed = false;
-		this.element.className = this.element.className.replace(/[ ]*JsPanel_pressed[ ]*/,"");
+		this.element.className = this.element.className.replace(pressed,"");
 	}
-	this.element.className = this.element.className.replace(/[ ]*JsPanel_pressed[ ]*/,"");
+	this.element.className = this.element.className.replace(pressed,"");
 	if (this.state.pressed) {
-		this.element.className += " JsPanel_pressed";
+		this.element.className += " " + this.getUnique() + "_pressed";
 	}
 	evnt.cancelBubble = true;
 	if (evnt.stopPropagation) evnt.stopPropagation(); 
 	if (this.debugout) {
 		var msg = evnt.type + "(" + source + ") - target:" + el.tagName + "#" + el.id + "." + el.className;
-		this.debugout.innerHTML = msg;
+//		this.debugout.innerHTML = msg;
 	}
 }
 
@@ -227,8 +250,8 @@ JsPanel.prototype.mouseMoved = function(evnt,source)
 JsPanel.prototype._addElement = function (parentel, tag, id, cssclass, attrs)
 {
 	var newel = document.createElement(tag);
-	newel.id = id;
-	if (cssclass != null) newel.className = cssclass;
+	newel.id = id.replace(/^JsPanel/,this.getUnique());
+	if (cssclass != null) newel.className = cssclass.replace(/JsPanel/g,this.getUnique());
 	if (typeof attrs == "object") {    
 		for (var key in attrs) {
 			newel.setAttribute(key,attrs[key]);
@@ -292,24 +315,76 @@ JsPanel.prototype.wipe = function()
 	this._addEventListener(this.userdiv,'mouseup',thisinst.cancelEvent,false); 
 }
 
+JsPanel.prototype.adjustStyle = function(el, tries)
+{
+	console.log(el.id);
+	if (typeof tries == 'undefined') tries=10;
+	var done=false;
+	var id = el.id.replace(/_Template/,"");
+	var link = document.getElementById(id);
+	if (link) link.parentNode.removeChild(link);
+	link = document.createElement('style');
+	link = this._addElement(document.getElementsByTagName('head')[0], 'link', id,null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	link.id = id;
+	link.type='text/css';
+	if (tries > 0 && !done) 
+	{
+		try 
+		{
+			if (el.styleSheet) {
+				console.log(el.styleSheet.cssText);
+				el.styleSheet.cssText = el.styleSheet.cssText.replace(/\#JsPanel/g,"#" + this.getUnique()).replace(/\.JsPanel/g,"." + this.getUnique());
+				console.log(el.styleSheet.cssText);
+			}
+			if (el.sheet) {
+				console.log(el.sheet['cssRules']);
+				for (var i=0;i<el.sheet.cssRules.length; i++){
+					console.log(el.sheet.cssRules[i].cssText);
+					//link.sheet.insertRule(el.sheet.cssRules[i].cssText.replace(/\#JsPanel/g,"#" + this.getUnique()).replace(/\.JsPanel/g,"." + this.getUnique()),link.sheet.cssRules.length);
+					var newrule= el.sheet.cssRules[i].cssText.replace(/\#JsPanel/g,"#" + this.getUnique()).replace(/\.JsPanel/g,"." + this.getUnique());
+					el.sheet.deleteRule(i);
+					el.sheet.insertRule(newrule,i);
+				}
+			}
+		}
+		catch (err)
+		{
+			console.log(tries);
+			console.log(err);
+			var thisinst=this;    
+			setTimeout(function() { thisinst.adjustStyle(el,tries - 1); },200);
+		}
+//		tries = tries - 1;
+	}
+
+}
+
+JsPanel.prototype.removeLink = function(id)
+{
+
+	var link = document.getElementById(id);
+	if (link) {
+		document.getElementsByTagName('head')[0].removeChild(link);
+	}
+}
+
+
 JsPanel.prototype.setTheme = function(themedir)
 {
-	var link = document.getElementById('JsPanel_Theme_Link');
 	var hidden = this.element.className.match(/hidden/);
 	var minimized = this.state.minimized;
 	this.hide();
- 	if (link) {
-		document.getElementsByTagName('head')[0].removeChild(link);
-	}
+	this.removeLink(this.getUnique() + '_Theme_Link_Template');
+	this.removeLink(this.getUnique() + '_Theme_Link');
 	this.themedir = themedir;
-	this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Theme_Link',null,{type:'text/css',href:this.themedir + '/JsPanel_theme.css',rel:'stylesheet'}); 
-	var bkgd = document.getElementById("JsPanel_midback");
+	link = this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Theme_Link_Template',null,{type:'text/css',href:this.themedir + '/JsPanel_theme.css',rel:'stylesheet'}); 
+	var bkgd = document.getElementById(this.getUnique() + "_midback");
 	if (bkgd) bkgd.src = this.themedir + '/mid.png';
 	if (!hidden) {
 		this.show();
 		if (minimized) this.minimize();
 	}
-
+	this.adjustStyle(link);
 }
 
 JsPanel.prototype.parseCoord = function(x)
@@ -364,7 +439,8 @@ JsPanel.prototype.buildPanel = function(x,y,ht,wd)
 	this._addElement(right,'div','JsPanel_lr', 'JsPanel_lr');
 	this.maindiv = this._addElement(el,'div','JsPanel_content','JsPanel_content');
 	this.element = el;
-	this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Link',null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	var link = this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Link_Template',null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	this.adjustStyle(link);
 	this.setTheme(this.themedir);
 	this.wipe();
 	if (x) this.state.x = this.parseCoord(x);
@@ -395,7 +471,7 @@ JsPanel.prototype.setTitle = function (str)
 JsPanel.prototype.show = function ()
 {
 	if (!this.element || !this.element.constructor.toString().match(/HTML([a-zA-Z0-9]*)Element/)) throw "show(): Build Panel first";
-	this.element.className = 'JsPanel_container';
+	this.element.className = this.getUnique() + '_container';
  	this.element.style.left = this.state.x;
 	this.element.style.top = this.state.y;
 	this.element.style.height = this.state.ht;

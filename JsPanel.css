@@ -12,6 +12,7 @@ div.JsPanel_pressed {
 	border: 2px solid red;
 	margin-left: -2px;
 	margin-top: -2px;
+	z-index: 99;
 }
 
 div.JsPanel_hidden, div.JsPanel_hidden * {
@@ -44,7 +45,7 @@ div.JsPanel_content {
   right: 0;
   height: auto;
   width: auto;
-  z-index: 10;
+
   padding-left: 18px !important;
   padding-right: 18px !important;
   padding-top:5px !important;
@@ -147,7 +148,6 @@ div.JsPanel_midmain img.JsPanel_midback {
   height: 100%;
   left: 0;
   right: 0;
- z-index: -1;
 }
 
 
