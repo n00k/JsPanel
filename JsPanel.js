@@ -1,4 +1,5 @@
 if (typeof window.JsPanel_list == 'undefined') window.JsPanel_list=Array();
+JsPanelCSSPath="https://raw2.github.com/n00k/JsPanel/master/JsPanel.css";
 function JsPanel(unique_seed) 
 {
 	this.unique_seed = unique_seed;
@@ -324,7 +325,7 @@ JsPanel.prototype.adjustStyle = function(el, tries)
 	var link = document.getElementById(id);
 	if (link) link.parentNode.removeChild(link);
 	link = document.createElement('style');
-	link = this._addElement(document.getElementsByTagName('head')[0], 'link', id,null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	link = this._addElement(document.getElementsByTagName('head')[0], 'link', id,null,{type:'text/css',href:JsPanelCssPath,rel:'stylesheet'});
 	link.id = id;
 	link.type='text/css';
 	if (tries > 0 && !done) 
@@ -439,7 +440,7 @@ JsPanel.prototype.buildPanel = function(x,y,ht,wd)
 	this._addElement(right,'div','JsPanel_lr', 'JsPanel_lr');
 	this.maindiv = this._addElement(el,'div','JsPanel_content','JsPanel_content');
 	this.element = el;
-	var link = this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Link_Template',null,{type:'text/css',href:'JsPanel.css',rel:'stylesheet'});
+	var link = this._addElement(document.getElementsByTagName('head')[0], 'link', 'JsPanel_Link_Template',null,{type:'text/css',href:JsPanelCSSPath,rel:'stylesheet'});
 	this.adjustStyle(link);
 	this.setTheme(this.themedir);
 	this.wipe();
